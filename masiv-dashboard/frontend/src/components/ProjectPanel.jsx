@@ -83,7 +83,7 @@ export default function ProjectPanel({
 }
 
 const styles = {
-  wrap: { position: "absolute", bottom: 16, left: 16, zIndex: 10, fontSize: 13, color: "#eee" },
+  wrap: { position: "absolute", bottom: 16, left: 16, zIndex: 45, fontSize: 13, color: "#eee" },
   toggle: {
     padding: "8px 14px", borderRadius: 8, border: "1px solid #3a3f4b",
     background: "#161923", color: "#eee", cursor: "pointer",

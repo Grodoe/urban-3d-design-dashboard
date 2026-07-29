@@ -10,12 +10,17 @@ const ZONE_COLORS = {
   MIXED: 0xb98ed9,
 };
 
-function colorForZoning(zoning) {
+function classifyZoningFallback(zoning) {
   const z = (zoning || "").toUpperCase();
-  if (z.includes("CC-X") || z.includes("DC") || z.includes("MU")) return ZONE_COLORS.MIXED;
-  if (z.startsWith("C") || z.includes("COMM")) return ZONE_COLORS.COMMERCIAL;
-  if (z.startsWith("R") || z.includes("RESIDENT")) return ZONE_COLORS.RESIDENTIAL;
-  return ZONE_COLORS.DEFAULT;
+  if (["CC-X", "DC", "MU"].some((code) => z.includes(code))) return "MIXED";
+  if (z.startsWith("C") || z.includes("COMM")) return "COMMERCIAL";
+  if (z.startsWith("R") || z.includes("RESIDENT")) return "RESIDENTIAL";
+  return "DEFAULT";
+}
+
+function colorForZoning(building) {
+  const category = building?.zoning_category || classifyZoningFallback(building?.zoning);
+  return ZONE_COLORS[category] ?? ZONE_COLORS.DEFAULT;
 }
 
 /**
@@ -86,19 +91,20 @@ export default function CityScene({
 
     function onKeyDown(e) {
       if (isTyping()) return;
+      if (e.ctrlKey || e.metaKey) return; // never treat Ctrl/Cmd combos as movement input
       if (e.code === "Space") { moveState.keys.add("up"); e.preventDefault(); }
-      else if (e.code === "ShiftLeft" || e.code === "ShiftRight") { moveState.keys.add("down"); }
-      else if (e.code === "ControlLeft" || e.code === "ControlRight") { moveState.fast = true; }
-      else if (e.code === "KeyW" || e.code === "ArrowUp") { moveState.keys.add("forward"); }
-      else if (e.code === "KeyS" || e.code === "ArrowDown") { moveState.keys.add("back"); }
-      else if (e.code === "KeyA" || e.code === "ArrowLeft") { moveState.keys.add("left"); }
-      else if (e.code === "KeyD" || e.code === "ArrowRight") { moveState.keys.add("right"); }
+      else if (e.code === "KeyC") { moveState.keys.add("down"); }
+      else if (e.code === "ShiftLeft" || e.code === "ShiftRight") { moveState.fast = true; }
+      else if (e.code === "KeyW" || e.code === "ArrowUp") { moveState.keys.add("forward"); e.preventDefault(); }
+      else if (e.code === "KeyS" || e.code === "ArrowDown") { moveState.keys.add("back"); e.preventDefault(); }
+      else if (e.code === "KeyA" || e.code === "ArrowLeft") { moveState.keys.add("left"); e.preventDefault(); }
+      else if (e.code === "KeyD" || e.code === "ArrowRight") { moveState.keys.add("right"); e.preventDefault(); }
     }
 
     function onKeyUp(e) {
       if (e.code === "Space") moveState.keys.delete("up");
-      else if (e.code === "ShiftLeft" || e.code === "ShiftRight") moveState.keys.delete("down");
-      else if (e.code === "ControlLeft" || e.code === "ControlRight") moveState.fast = false;
+      else if (e.code === "KeyC") moveState.keys.delete("down");
+      else if (e.code === "ShiftLeft" || e.code === "ShiftRight") moveState.fast = false;
       else if (e.code === "KeyW" || e.code === "ArrowUp") moveState.keys.delete("forward");
       else if (e.code === "KeyS" || e.code === "ArrowDown") moveState.keys.delete("back");
       else if (e.code === "KeyA" || e.code === "ArrowLeft") moveState.keys.delete("left");
@@ -245,7 +251,7 @@ export default function CityScene({
       geometry.rotateX(-Math.PI / 2);
 
       const isHighlighted = highlightedIds && highlightedIds.has(b.id);
-      const baseColor = colorForZoning(b.zoning);
+      const baseColor = colorForZoning(b);
       const material = new THREE.MeshStandardMaterial({
         color: isHighlighted ? 0xffe066 : baseColor,
         emissive: isHighlighted ? 0x554400 : 0x000000,
@@ -283,7 +289,7 @@ export default function CityScene({
         mesh.material.emissive.setHex(0x553300);
         mesh.scale.set(1.03, 1.03, 1.03);
       } else {
-        const orig = mesh.userData.originalColor || colorForZoning(b && b.zoning);
+        const orig = mesh.userData.originalColor || colorForZoning(b);
         mesh.material.color.setHex(isHighlighted ? 0xffe066 : orig);
         mesh.material.emissive.setHex(0x000000);
         mesh.scale.set(1, 1, 1);

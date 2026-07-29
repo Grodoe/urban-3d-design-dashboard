@@ -37,7 +37,7 @@ function Row({ label, value }) {
 const styles = {
   panel: {
     position: "absolute", top: 16, right: 16, width: 260, background: "#161923ee",
-    border: "1px solid #3a3f4b", borderRadius: 10, padding: "14px 16px", zIndex: 10,
+    border: "1px solid #3a3f4b", borderRadius: 10, padding: "14px 16px", zIndex: 60,
     color: "#eee",
   },
   closeBtn: {

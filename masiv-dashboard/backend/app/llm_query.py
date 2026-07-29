@@ -27,7 +27,8 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama-3.1-8b-instant"  # fast + free-tier friendly
 
-ALLOWED_ATTRIBUTES = ["height_m", "assessed_value", "zoning", "address"]
+
+ALLOWED_ATTRIBUTES = ["height_m", "assessed_value", "zoning", "zoning_category", "address"]
 ALLOWED_OPERATORS = [">", "<", ">=", "<=", "==", "contains"]
 
 SYSTEM_PROMPT = f"""You convert a natural-language request about city buildings into a JSON filter.
@@ -41,7 +42,9 @@ Allowed operators: {ALLOWED_OPERATORS}
 Rules:
 - "height over/above/taller than X feet" -> attribute "height_m", operator ">", value = X * 0.3048 (convert feet to meters, round to 1 decimal)
 - "height over/above X meters" -> attribute "height_m", value = X directly
-- "commercial buildings" / "residential buildings" -> attribute "zoning", operator "contains", value a short zoning substring like "C-" or "RC-"
+- "commercial buildings" -> attribute "zoning_category", operator "==", value "COMMERCIAL"
+- "residential buildings" -> attribute "zoning_category", operator "==", value "RESIDENTIAL"
+- "mixed-use buildings" -> attribute "zoning_category", operator "==", value "MIXED"
 - "value/cost/worth less than $X" or "under $X" -> attribute "assessed_value", operator "<", value = X (numeric, no $ or commas)
 - "zoned RC-G" / "in RC-G zoning" -> attribute "zoning", operator "contains", value "RC-G"
 - If the request implies more than one condition, return multiple entries in "filters".
@@ -90,10 +93,12 @@ def _rule_based_fallback(query: str) -> list[dict[str, Any]]:
 
     if zoning_value:
         filters.append({"attribute": "zoning", "operator": "contains", "value": zoning_value})
+    elif "mixed-use" in q or "mixed use" in q:
+        filters.append({"attribute": "zoning_category", "operator": "==", "value": "MIXED"})
     elif "commercial" in q:
-        filters.append({"attribute": "zoning", "operator": "contains", "value": "C-"})
+        filters.append({"attribute": "zoning_category", "operator": "==", "value": "COMMERCIAL"})
     elif "residential" in q:
-        filters.append({"attribute": "zoning", "operator": "contains", "value": "R"})
+        filters.append({"attribute": "zoning_category", "operator": "==", "value": "RESIDENTIAL"})
 
     return filters
 

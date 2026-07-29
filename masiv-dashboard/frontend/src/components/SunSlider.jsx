@@ -13,7 +13,7 @@ export default function SunSlider({ value, onChange }) {
 
 const styles = {
   wrap: {
-    position: "absolute", bottom: 16, right: 16, zIndex: 10, background: "#161923ee",
+    position: "absolute", bottom: 16, right: 16, zIndex: 45, background: "#161923ee",
     border: "1px solid #3a3f4b", borderRadius: 10, padding: "10px 14px",
     display: "flex", flexDirection: "column", gap: 6, color: "#eee", fontSize: 12,
   },

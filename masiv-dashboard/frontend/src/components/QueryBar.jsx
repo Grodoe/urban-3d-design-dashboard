@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function QueryBar({ onRunQuery, onClear, lastExplanation, loading }) {
   const [text, setText] = useState("");
+  const [narrow, setNarrow] = useState(() => {
+    try { return window.innerWidth < 720; } catch { return false; }
+  });
+
+  useEffect(() => {
+    function onResize() { setNarrow(window.innerWidth < 720); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   function submit(e) {
     e.preventDefault();
@@ -9,8 +18,10 @@ export default function QueryBar({ onRunQuery, onClear, lastExplanation, loading
     else if (onClear) onClear();
   }
 
+  const wrapStyle = { ...styles.wrap, top: narrow ? 84 : 16, zIndex: 40 };
+
   return (
-    <form onSubmit={submit} style={styles.wrap}>
+    <form onSubmit={submit} style={wrapStyle}>
       <input
         style={styles.input}
         placeholder='Try: "highlight buildings over 100 feet" or "show commercial buildings"'
@@ -31,7 +42,7 @@ export default function QueryBar({ onRunQuery, onClear, lastExplanation, loading
 
 const styles = {
   wrap: {
-    position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)",
+    position: "absolute", left: "50%", transform: "translateX(-50%)",
     display: "flex", gap: 8, zIndex: 10, width: "min(640px, 90vw)", flexWrap: "wrap",
   },
   input: {

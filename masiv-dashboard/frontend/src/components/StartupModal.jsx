@@ -8,8 +8,8 @@ export default function StartupModal({ onClose }) {
         <ul style={{ margin: "8px 0 12px 18px", color: "#dfe6ef" }}>
           <li>W / S: move forward / back</li>
           <li>A / D: strafe left / right</li>
-          <li>Space: move up, Shift: move down</li>
-          <li>Hold Ctrl for speed boost</li>
+          <li>Space: move up, C: move down</li>
+          <li>Hold Shift for speed boost</li>
           <li>Mouse drag: orbit, Scroll: zoom</li>
         </ul>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
@@ -23,7 +23,7 @@ export default function StartupModal({ onClose }) {
 const overlay = {
   position: "fixed", left: 0, top: 0, right: 0, bottom: 0,
   background: "rgba(2,6,12,0.6)", display: "flex", alignItems: "center", justifyContent: "center",
-  zIndex: 50,
+  zIndex: 9999,
 };
 const box = {
   background: "#0f1720", color: "#eef3f8", padding: 20, borderRadius: 10, width: 380,

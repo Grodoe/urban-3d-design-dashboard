@@ -7,6 +7,7 @@ import ProjectPanel from "./components/ProjectPanel";
 import SunSlider from "./components/SunSlider";
 import PermitToggle from "./components/PermitToggle";
 import BuildingLegend from "./components/BuildingLegend";
+import ResultsList from "./components/ResultsList";  
 import { api } from "./api";
 
 export default function App() {
@@ -31,13 +32,29 @@ export default function App() {
   const [showStartup, setShowStartup] = useState(() => {
     try { return !localStorage.getItem("masiv_controls_seen"); } catch { return true; }
   });
+  const [loadingData, setLoadingData] = useState(false);
+  const [dataError, setDataError] = useState(null);
+  const matchedBuildings = buildings.filter((b) => highlightedIds.has(b.id));
 
   useEffect(() => {
-    api.getBuildings().then((res) => {
-      setBuildings(res.buildings);
-      setDataSource(res.data_source);
-    });
-    api.getPermits().then((res) => setPermits(res.permits));
+    let mounted = true;
+    setLoadingData(true);
+    (async () => {
+      try {
+        const [bRes, pRes] = await Promise.all([api.getBuildings(), api.getPermits()]);
+        if (!mounted) return;
+        setBuildings(bRes.buildings);
+        setDataSource(bRes.data_source);
+        setPermits(pRes.permits);
+        setDataError(null);
+      } catch (e) {
+        if (!mounted) return;
+        setDataError(e && e.message ? `Failed to load city data: ${e.message}` : "Failed to load city data.");
+      } finally {
+        if (mounted) setLoadingData(false);
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
 
   const clearSearch = useCallback(() => {
@@ -54,6 +71,9 @@ export default function App() {
       clearSearch();
       return;
     }
+    // Deselect any currently selected building immediately when a new
+    // prompt is submitted so the UI reflects the incoming search state.
+    setSelectedBuilding(null);
     setQueryLoading(true);
     try {
       // Quick client-side address lookup: if the user typed an address-like
@@ -113,8 +133,29 @@ export default function App() {
       {showStartup && (
         <StartupModal onClose={() => { try { localStorage.setItem("masiv_controls_seen", "1"); } catch {} setShowStartup(false); }} />
       )}
+      {dataError && (
+        <div style={errorBannerStyle}>{dataError}</div>
+      )}
 
+      {loadingData && (
+        <div style={spinnerOverlay}>
+          <svg width="54" height="54" viewBox="0 0 50 50" style={{ display: "block" }}>
+            <circle cx="25" cy="25" r="20" stroke="#4a7dfc" strokeWidth="4" strokeLinecap="round" fill="none" strokeOpacity="0.18" />
+            <path d="M45 25a20 20 0 0 1-20 20" stroke="#4a7dfc" strokeWidth="4" strokeLinecap="round" fill="none">
+              <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite" />
+            </path>
+          </svg>
+          <div style={{ color: "#cbd6e6", marginTop: 8 }}>Loading city data…</div>
+        </div>
+      )}
       <QueryBar onRunQuery={runQuery} onClear={clearSearch} lastExplanation={lastExplanation} loading={queryLoading} />
+      
+      <ResultsList
+        buildings={matchedBuildings}
+        selectedId={selectedBuilding?.id}
+        onSelect={(b) => { setSelectedBuilding(b); setSelectedPermit(null); }}
+        onClear={clearSearch}
+      />
 
       <InfoPanel
         building={selectedBuilding}
@@ -147,4 +188,15 @@ const bannerStyle = {
   position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
   background: "#3a2f12ee", border: "1px solid #6b5420", color: "#ffe9b3",
   padding: "8px 14px", borderRadius: 8, fontSize: 12, zIndex: 10, maxWidth: 480, textAlign: "center",
+};
+
+const errorBannerStyle = {
+  ...bannerStyle,
+  background: "#7a1f1f", border: "1px solid #a33b3b", color: "#ffecec", zIndex: 80,
+};
+
+const spinnerOverlay = {
+  position: "absolute", left: 0, top: 0, right: 0, bottom: 0,
+  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+  background: "rgba(2,6,12,0.32)", zIndex: 9998,
 };

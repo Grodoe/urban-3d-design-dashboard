@@ -25,7 +25,7 @@ const styles = {
     position: "absolute",
     top: 16,
     left: 16,
-    zIndex: 10,
+    zIndex: 45,
     background: "#161923ee",
     border: "1px solid #3a3f4b",
     borderRadius: 10,

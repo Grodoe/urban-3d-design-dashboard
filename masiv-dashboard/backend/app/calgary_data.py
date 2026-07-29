@@ -76,6 +76,20 @@ def _polygon_centroid(rings: list) -> tuple[float, float]:
     lat = sum(p[1] for p in pts) / len(pts)
     return lat, lon
 
+def classify_zoning(zoning: str) -> str:
+    """
+    Buckets a raw zoning code into MIXED / COMMERCIAL / RESIDENTIAL / DEFAULT.
+    Single source of truth - both the 3D building color (frontend reads
+    zoning_category) and the NL query filter key off this exact function.
+    """
+    z = (zoning or "").upper()
+    if any(code in z for code in ["CC-X", "DC", "MU"]):
+        return "MIXED"
+    if z.startswith("C") or "COMM" in z:
+        return "COMMERCIAL"
+    if z.startswith("R") or "RESIDENT" in z:
+        return "RESIDENTIAL"
+    return "DEFAULT"
 
 def estimate_height_m(land_use: str, assessed_value: float, seed: str) -> float:
     """
@@ -156,6 +170,7 @@ def fetch_buildings(bbox: tuple[float, float, float, float] = DEFAULT_BBOX) -> d
             "footprint": footprint,      # list of [lon, lat]
             "centroid": {"lat": lat, "lon": lon},
             "zoning": zoning,
+            "zoning_category": classify_zoning(zoning),
             "assessed_value": assessed_value,
             "height_m": estimate_height_m(zoning, assessed_value, bid),
         })
@@ -199,6 +214,7 @@ def _synthetic_city_blocks(bbox: tuple[float, float, float, float]) -> list[dict
                 "footprint": footprint,
                 "centroid": {"lat": cy, "lon": cx},
                 "zoning": zoning,
+                "zoning_category": classify_zoning(zoning),
                 "assessed_value": assessed_value,
                 "height_m": estimate_height_m(zoning, assessed_value, bid),
             })
