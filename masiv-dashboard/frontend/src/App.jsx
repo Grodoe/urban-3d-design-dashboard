@@ -6,6 +6,7 @@ import InfoPanel from "./components/InfoPanel";
 import ProjectPanel from "./components/ProjectPanel";
 import SunSlider from "./components/SunSlider";
 import PermitToggle from "./components/PermitToggle";
+import BuildingLegend from "./components/BuildingLegend";
 import { api } from "./api";
 
 export default function App() {
@@ -39,7 +40,20 @@ export default function App() {
     api.getPermits().then((res) => setPermits(res.permits));
   }, []);
 
+  const clearSearch = useCallback(() => {
+    setHighlightedIds(new Set());
+    setSelectedBuilding(null);
+    setSelectedPermit(null);
+    setLastExplanation("");
+    setLastFilters([]);
+    setLastQuery("");
+  }, []);
+
   const runQuery = useCallback(async (query) => {
+    if (!query.trim()) {
+      clearSearch();
+      return;
+    }
     setQueryLoading(true);
     try {
       // Quick client-side address lookup: if the user typed an address-like
@@ -73,7 +87,7 @@ export default function App() {
     } finally {
       setQueryLoading(false);
     }
-  }, []);
+  }, [buildings, clearSearch]);
 
   function handleLoadProject(project) {
     setLastFilters(project.filters);
@@ -100,7 +114,7 @@ export default function App() {
         <StartupModal onClose={() => { try { localStorage.setItem("masiv_controls_seen", "1"); } catch {} setShowStartup(false); }} />
       )}
 
-      <QueryBar onRunQuery={runQuery} lastExplanation={lastExplanation} loading={queryLoading} />
+      <QueryBar onRunQuery={runQuery} onClear={clearSearch} lastExplanation={lastExplanation} loading={queryLoading} />
 
       <InfoPanel
         building={selectedBuilding}
@@ -115,6 +129,7 @@ export default function App() {
         onLoadProject={handleLoadProject}
       />
 
+      <BuildingLegend />
       <PermitToggle showPermits={showPermits} setShowPermits={setShowPermits} />
       <SunSlider value={sunAngle} onChange={setSunAngle} />
 

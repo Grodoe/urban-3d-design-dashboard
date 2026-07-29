@@ -1,11 +1,12 @@
 import { useState } from "react";
 
-export default function QueryBar({ onRunQuery, lastExplanation, loading }) {
+export default function QueryBar({ onRunQuery, onClear, lastExplanation, loading }) {
   const [text, setText] = useState("");
 
   function submit(e) {
     e.preventDefault();
     if (text.trim()) onRunQuery(text.trim());
+    else if (onClear) onClear();
   }
 
   return (
@@ -14,7 +15,11 @@ export default function QueryBar({ onRunQuery, lastExplanation, loading }) {
         style={styles.input}
         placeholder='Try: "highlight buildings over 100 feet" or "show commercial buildings"'
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          setText(next);
+          if (!next.trim() && onClear) onClear();
+        }}
       />
       <button style={styles.button} type="submit" disabled={loading}>
         {loading ? "Thinking..." : "Ask"}

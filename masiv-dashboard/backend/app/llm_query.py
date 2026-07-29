@@ -16,6 +16,7 @@ import json
 import os
 import re
 from typing import Any
+from warnings import filters
 
 import requests
 from dotenv import load_dotenv
@@ -68,25 +69,30 @@ def _rule_based_fallback(query: str) -> list[dict[str, Any]]:
         val = float(m.group(2).replace(",", ""))
         filters.append({"attribute": "assessed_value", "operator": "<", "value": val})
 
-    m = re.search(r"zon(?:ed|ing)?\s+([a-z0-9\-]+)", q)
+    STOPWORDS = {"buildings", "properties", "areas", "zones", "zone", "building",
+             "district", "districts", "show", "the", "any", "all"}
+
+    def _clean_code(token: str) -> str | None:
+        return token.upper() if token and token not in STOPWORDS else None
+
+    zoning_value = None
+
+    # "DC zoned" / "RC-G zoning" - code appears BEFORE the keyword
+    m = re.search(r"\b([a-z]{1,4}(?:-[a-z0-9]{1,4})?)\s+zon(?:ed|ing)?\b", q)
     if m:
-        filters.append({"attribute": "zoning", "operator": "contains", "value": m.group(1).upper()})
-    else:
-        # Catch simple queries like "show DC" or "DC zoning" where the
-        # user mentions a short zoning code without the word "zoned".
-        # Recognize a few common patterns (DC, CC-X, MU, RC-G) and fall back
-        # to matching the raw token if present.
-        if re.search(r"\bdc\b", q):
-            filters.append({"attribute": "zoning", "operator": "contains", "value": "DC"})
-        elif re.search(r"\bcc-?x\b", q):
-            filters.append({"attribute": "zoning", "operator": "contains", "value": "CC-X"})
-        elif re.search(r"\bmu\b", q):
-            filters.append({"attribute": "zoning", "operator": "contains", "value": "MU"})
-        elif re.search(r"\brc-?g\b", q):
-            filters.append({"attribute": "zoning", "operator": "contains", "value": "RC-G"})
-    if "commercial" in q:
+        zoning_value = _clean_code(m.group(1))
+
+    # "zoned DC" / "zoning of RC-G" - code appears AFTER the keyword
+    if not zoning_value:
+        m = re.search(r"zon(?:ed|ing)?\s+(?:of\s+|in\s+)?([a-z0-9\-]+)", q)
+        if m:
+            zoning_value = _clean_code(m.group(1))
+
+    if zoning_value:
+        filters.append({"attribute": "zoning", "operator": "contains", "value": zoning_value})
+    elif "commercial" in q:
         filters.append({"attribute": "zoning", "operator": "contains", "value": "C-"})
-    if "residential" in q:
+    elif "residential" in q:
         filters.append({"attribute": "zoning", "operator": "contains", "value": "R"})
 
     return filters
