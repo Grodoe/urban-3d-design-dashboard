@@ -1,68 +1,75 @@
 # MASIV Calgary 3D City Dashboard
 
-A full-stack prototype: a 3D city dashboard for downtown Calgary with live
-civic data overlays and natural-language querying, built for the MASIV
-Fall 2026 intern test.
+A full-stack prototype for exploring downtown Calgary through a 3D map, live
+civic data, and natural-language filtering. The app is built for the MASIV
+Fall 2026 intern test and currently works end to end locally with a FastAPI
+backend and a Vite + React + Three.js frontend.
 
-- **Backend**: Python (FastAPI) — fetches and processes real City of Calgary
-  open data, integrates a free-tier LLM (Groq) for NL querying, persists
-  users/projects in SQLite.
-- **Frontend**: React + Three.js (Vite) — extrudes real building
-  footprints in 3D, overlays live permit markers, highlights buildings from
-  NL queries, and a save/load project panel.
-- **Bonus**: time-of-day sun slider with real-time shadows (Three.js
-  directional light).
+## What the app can do now
 
-## Data sources (real, live)
+- Load live Calgary parcel data and live permit data for a configurable
+  downtown bounding box.
+- Render a 3D city scene with extruded building footprints and a live permit
+  overlay.
+- Let users click buildings or permits to view details in an info panel.
+- Highlight matching buildings from natural-language queries such as:
+  - "show DC properties"
+  - "show properties with assessed value over $1,000,000"
+  - "show DC properties and above $3,000,000 assessed value"
+- Support direct address-like searches such as a street address or intersection,
+  which can select a building directly when a match is found locally.
+- Include a light-bulb hint panel with example queries in the bottom-left UI.
+- Save and reload project states with username-based project persistence.
+- Adjust the sun angle in real time to change lighting and shadows.
+- Show a startup controls modal and a fallback banner if the live parcel API is
+  unavailable.
+
+## Stack
+
+- Backend: Python, FastAPI, SQLAlchemy, SQLite
+- Frontend: React, Vite, Three.js
+- Natural-language parsing: Groq API when available, with a deterministic
+  offline fallback parser when no API key is configured
+
+## Data sources
 
 | Data | Source | Notes |
 |---|---|---|
-| Building footprints, address, zoning, assessed value | [Current Year Property Assessments (Parcel)](https://data.calgary.ca/Government/Current-Year-Property-Assessments-Parcel-/4bsw-nn7w) — `data.calgary.ca/resource/4bsw-nn7w.json` | Real parcel polygons + attributes |
-| Building permits (live civic layer) | [Building Permits](https://data.calgary.ca/resource/c2es-76ed.json) | Confirmed working, no API key required |
+| Parcel data, address, zoning, assessed value | City of Calgary Open Data: Current Year Property Assessments (Parcel) | Real parcel polygons and attribute data |
+| Permit data | City of Calgary Open Data: Building Permits | Live civic permit layer, no API key required |
 
-### Documented fallback — building height
+## Height handling
 
-Calgary does **not** publish true building height in any free, city-wide
-open dataset — the only LiDAR-derived 3D massing product ("3D Buildings —
-Citywide") is a paid/licensed dataset, not open data. Per the brief's
-explicit note that an alternative approach is fine "if time permits...
-explanation provided in UML," `backend/app/calgary_data.py::estimate_height_m`
-derives a deterministic, seeded height estimate from each building's **real**
-zoning code and **real** assessed value (downtown high-density zoning +
-higher value → taller, consistent with Calgary's actual skyline pattern).
-Every other attribute shown (address, zoning, assessed value, and all permit
-data) is live data fetched at request time — nothing else is fabricated.
+Calgary does not publish true building height in a free city-wide open dataset,
+so the app uses a documented heuristic to estimate height from each parcel's
+real zoning and assessed value. The estimate is deterministic and seeded, but
+it is intended to produce a believable downtown skyline rather than claim
+actual measured height.
 
-If the live parcel API is ever unreachable, the backend falls back to a
-deterministic synthetic 4-block grid with the same data shape, and flags this
-via `"data_source": "synthetic_fallback"` in the `/api/buildings` response —
-the frontend shows a small banner when this happens so it's never mistaken
-for live data. This was tested and works correctly end to end.
-
-See `uml/uml_diagram.png` for the class diagram (data models + modules) and
-sequence diagram (query flow, save/load flow), including this note.
+If the live parcel API is unavailable, the backend falls back to a synthetic
+4-block layout with the same data shape and flags it as a fallback so the UI
+can clearly distinguish it from live data.
 
 ## Project structure
 
-```
+```text
 masiv-dashboard/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py            # FastAPI app + all routes
-│   │   ├── calgary_data.py    # fetch + process Calgary open data
-│   │   ├── llm_query.py       # NL -> filter via Groq (+ offline fallback)
-│   │   ├── models.py          # SQLAlchemy models (User, Project)
-│   │   ├── schemas.py         # Pydantic request/response schemas
-│   │   └── database.py        # SQLite engine/session setup
+│   │   ├── main.py            # FastAPI routes and app setup
+│   │   ├── calgary_data.py    # Live data fetches + fallback logic
+│   │   ├── llm_query.py       # Query parsing and filter application
+│   │   ├── models.py          # SQLAlchemy user/project models
+│   │   ├── schemas.py         # Pydantic request/response models
+│   │   └── database.py        # SQLite engine and session setup
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx
-│   │   ├── api.js             # fetch wrapper for the backend
-│   │   ├── geo.js             # lon/lat -> local meters projection
-│   │   └── components/        # CityScene (Three.js), QueryBar, InfoPanel,
-│   │                           # ProjectPanel, SunSlider, PermitToggle
+│   │   ├── api.js             # Backend fetch wrapper
+│   │   ├── geo.js             # Projection helpers
+│   │   └── components/        # CityScene, QueryBar, InfoPanel, etc.
 │   ├── package.json
 │   └── vite.config.js
 └── uml/
@@ -70,97 +77,67 @@ masiv-dashboard/
     └── uml_diagram.png
 ```
 
-## Setup — local development
+## Local setup
 
 ### 1. Backend
 
 ```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+cd massiv-dashboard/backend
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Get a **free** Groq API key (no credit card needed):
-1. Go to https://console.groq.com/keys
-2. Sign up / log in, click "Create API Key"
-3. Paste it into `.env` as `GROQ_API_KEY=...`
+If you want the optional free-form LLM mode, add a Groq key to the backend
+environment file:
 
-> The app works even without a key — natural-language queries fall back to a
-> small deterministic parser (`llm_query._rule_based_fallback`) that handles
-> the exact example phrasings in the brief. Add the key for genuinely free-form
-> queries.
+```env
+GROQ_API_KEY=your_key_here
+```
 
-Run the backend:
+Then start the backend:
+
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
-Visit http://localhost:8000/api/health — should return `{"status": "ok"}`.
-Interactive API docs: http://localhost:8000/docs
+
+Check the health endpoint at http://localhost:8000/api/health.
 
 ### 2. Frontend
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
 npm run dev
 ```
-Visit http://localhost:5173. It talks to the backend at `http://localhost:8000`
-by default — override with a `.env` file containing `VITE_API_URL=...` if
-your backend runs elsewhere.
 
-## Deploying (free hosting)
+Open http://localhost:5173. The frontend expects the backend at
+http://localhost:8000 by default. Override it by setting a VITE_API_URL
+environment variable if needed.
 
-**Backend → Render** (free web service):
-1. Push this repo to GitHub.
-2. On [render.com](https://render.com), New → Web Service → connect the repo,
-   root directory `backend`.
-3. Build command: `pip install -r requirements.txt`
-   Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. Add environment variable `GROQ_API_KEY` in the Render dashboard.
-5. Note the deployed URL, e.g. `https://masiv-backend.onrender.com`.
+## Deployment notes
 
-**Frontend → Vercel / Netlify** (free static hosting):
-1. Root directory `frontend`, build command `npm run build`, output `dist`.
-2. Add environment variable `VITE_API_URL=https://masiv-backend.onrender.com`.
-3. Deploy — you'll get a public URL to submit.
+The app is designed to be deployable in a simple free-tier setup:
 
-(Render's free tier spins down after inactivity — the first request after a
-while may take ~30s to wake it up. Mention this in your submission email so
-graders aren't surprised.)
+- Backend: Render or another Python hosting service
+- Frontend: Vercel or Netlify
+- Set the frontend environment variable VITE_API_URL to the deployed backend URL
 
-## How each requirement is met
+## Current implementation highlights
 
-1. **Calgary data, 3-4+ blocks** — `calgary_data.fetch_buildings()` pulls
-   real parcels within a configurable bounding box (`CALGARY_BBOX` env var),
-   defaulting to a Beltline/downtown stretch of ~36 buildings.
-2. **3D visualization** — `CityScene.jsx` extrudes each real footprint
-   polygon to its (estimated) height using `THREE.ExtrudeGeometry`.
-3. **Interactivity** — clicking a building raycasts against the mesh list,
-   highlights it, and shows an `InfoPanel` with address/height/zoning/value.
-4. **Live permits layer** — `fetch_permits()` pulls real, current permits in
-   the same bbox; rendered as red 3D pins with a show/hide toggle
-   (`PermitToggle.jsx`) and click-for-details.
-5. **LLM querying** — `QueryBar.jsx` → `POST /api/query` → Groq parses the NL
-   query into `{attribute, operator, value}` filters → matching buildings
-   highlight yellow.
-6. **Persistence** — username field + "Save Project" button
-   (`ProjectPanel.jsx`) stores the current filters under a project name;
-   saved projects list re-applies filters on click.
-7. **UML diagram** — `uml/uml_diagram.png` (class + sequence diagrams).
+1. Real parcel and permit data are fetched from Calgary open-data endpoints.
+2. Building footprints are rendered in 3D and extruded based on the estimated
+   height heuristic.
+3. Queries are parsed into structured filters and applied to the building set.
+4. The UI highlights matching buildings, surfaces a results list, and allows
+   project save/load.
+5. The app includes a small fallback mode for offline or degraded environments.
 
-**Bonus**: `SunSlider.jsx` drives a `THREE.DirectionalLight` position/intensity
-in real time with shadow mapping enabled on all building meshes.
+## Known limitations
 
-## Known limitations / next steps
-
-- The live parcel dataset's exact field names were inferred from Socrata
-  naming conventions and verified for the confirmed-working permits dataset;
-  `calgary_data.py` checks several likely field-name variants defensively and
-  falls back gracefully if none match, so the pipeline never breaks silently.
-- No authentication beyond a plain username, per the brief's explicit
-  allowance.
-- The in-process building cache in `main.py` is intentionally simple
-  (single global cache, no TTL) — fine for a prototype/demo, would move to a
-  proper cache (Redis, or a scheduled refresh) for production use.
+- The height value is an estimate, not a measured building height.
+- The project persistence layer is intentionally simple for a prototype and uses
+  a local SQLite database.
+- Authentication is minimal and limited to a username field, which matches the
+  brief's allowance for an intern-test prototype.

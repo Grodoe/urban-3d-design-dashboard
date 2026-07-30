@@ -24,7 +24,7 @@ export default function QueryBar({ onRunQuery, onClear, lastExplanation, loading
     <form onSubmit={submit} style={wrapStyle}>
       <input
         style={styles.input}
-        placeholder='Try: "highlight buildings over 100 feet" or "show commercial buildings"'
+        placeholder='Try: "show residential buildings" or "highlight buildings over $1,000,000 and 100m"'
         value={text}
         onChange={(e) => {
           const next = e.target.value;
