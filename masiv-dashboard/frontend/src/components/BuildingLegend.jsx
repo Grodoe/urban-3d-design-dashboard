@@ -1,12 +1,35 @@
-const legendItems = [
-  { label: "Mixed-use / CC-X / DC / MU", color: "#b98ed9" },
-  { label: "Commercial zoning", color: "#d98e50" },
-  { label: "Residential zoning", color: "#7fbf8f" },
-  { label: "Other / default zoning", color: "#6f8faf" },
-  { label: "Highlighted building", color: "#ffe066" },
-];
+function classifyZoningCategory(building) {
+  const raw = building?.zoning_category || "";
+  if (raw) return raw;
 
-export default function BuildingLegend() {
+  const zoning = (building?.zoning || "").toUpperCase();
+  if (["CC-X", "DC", "MU"].some((code) => zoning.includes(code))) return "MIXED";
+  if (zoning.startsWith("C") || zoning.includes("COMM")) return "COMMERCIAL";
+  if (zoning.startsWith("R") || zoning.includes("RESIDENT")) return "RESIDENTIAL";
+  return "DEFAULT";
+}
+
+function getCategoryCounts(buildings = []) {
+  const counts = { MIXED: 0, COMMERCIAL: 0, RESIDENTIAL: 0, DEFAULT: 0 };
+
+  buildings.forEach((building) => {
+    const category = classifyZoningCategory(building);
+    if (counts[category] !== undefined) counts[category] += 1;
+  });
+
+  return counts;
+}
+
+export default function BuildingLegend({ buildings = [] }) {
+  const counts = getCategoryCounts(buildings);
+  const legendItems = [
+    { key: "MIXED", label: "Mixed-use Zoning", color: "#b98ed9", count: counts.MIXED },
+    { key: "COMMERCIAL", label: "Commercial Zoning", color: "#d98e50", count: counts.COMMERCIAL },
+    { key: "RESIDENTIAL", label: "Residential Zoning", color: "#7fbf8f", count: counts.RESIDENTIAL },
+    { key: "DEFAULT", label: "Other / Default Zoning", color: "#6f8faf", count: counts.DEFAULT },
+    { label: "Highlighted building", color: "#ffe066" },
+  ];
+
   return (
     <div style={styles.wrap}>
       <div style={styles.title}>Building color legend</div>
@@ -14,6 +37,7 @@ export default function BuildingLegend() {
         <div key={item.label} style={styles.row}>
           <span style={{ ...styles.swatch, background: item.color }} />
           <span>{item.label}</span>
+          {typeof item.count === "number" && <span style={styles.count}>({item.count})</span>}
         </div>
       ))}
     </div>
@@ -45,6 +69,11 @@ const styles = {
     alignItems: "center",
     gap: 10,
     marginBottom: 8,
+  },
+  count: {
+    marginLeft: "auto",
+    color: "#9fb4d0",
+    fontWeight: 600,
   },
   swatch: {
     width: 16,

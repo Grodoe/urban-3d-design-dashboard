@@ -170,7 +170,7 @@ export default function App() {
         onLoadProject={handleLoadProject}
       />
 
-      <BuildingLegend />
+      <BuildingLegend buildings={buildings} />
       <PermitToggle showPermits={showPermits} setShowPermits={setShowPermits} />
       <SunSlider value={sunAngle} onChange={setSunAngle} />
 
