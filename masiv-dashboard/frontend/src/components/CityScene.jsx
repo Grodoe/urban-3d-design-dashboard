@@ -58,7 +58,7 @@ export default function CityScene({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0b0d12);
-    scene.fog = new THREE.Fog(0x0b0d12, 400, 1400);
+    scene.fog = new THREE.Fog(0x0b0d12, 1200, 4500);
 
     const camera = new THREE.PerspectiveCamera(55, width / height, 1, 5000);
     camera.position.set(120, 160, 220);
@@ -114,21 +114,24 @@ export default function CityScene({
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);  
     scene.add(ambient);
+
+    const hemi = new THREE.HemisphereLight(0x8fa8ff, 0x2a2f3a, 0.6);
+    scene.add(hemi);
 
     const sun = new THREE.DirectionalLight(0xfff2d8, 1.1);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -500;
-    sun.shadow.camera.right = 500;
-    sun.shadow.camera.top = 500;
-    sun.shadow.camera.bottom = -500;
-    sun.shadow.camera.far = 1500;
+    sun.shadow.camera.left = -1800;    
+    sun.shadow.camera.right = 1800;    
+    sun.shadow.camera.top = 1800;      
+    sun.shadow.camera.bottom = -1800;  
+    sun.shadow.camera.far = 4000;      
     scene.add(sun);
     scene.add(sun.target);
 
-    const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+    const groundGeo = new THREE.PlaneGeometry(20000, 20000);
     const groundMat = new THREE.MeshStandardMaterial({ color: 0x14171f });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;

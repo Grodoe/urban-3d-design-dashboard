@@ -37,6 +37,14 @@ import random
 from typing import Any, Optional
 
 import requests
+from dotenv import load_dotenv
+
+# Load .env HERE, before DEFAULT_BBOX reads it below. This module is imported
+# first in main.py's `from . import calgary_data, llm_query, models, schemas`,
+# so it cannot rely on llm_query.py or database.py having already called
+# load_dotenv() - by the time either of those runs, DEFAULT_BBOX would
+# already be a stale, hardcoded fallback.
+load_dotenv()
 
 logger = logging.getLogger("calgary_data")
 
@@ -133,7 +141,7 @@ def fetch_buildings(bbox: tuple[float, float, float, float] = DEFAULT_BBOX) -> d
     where = (
         f"within_box(multipolygon, {max_lat}, {min_lon}, {min_lat}, {max_lon})"
     )
-    params = {"$where": where, "$limit": 300}
+    params = {"$where": where, "$limit": 800}
 
     try:
         resp = requests.get(PARCEL_DATASET_URL, params=params, timeout=REQUEST_TIMEOUT)
@@ -226,7 +234,7 @@ def fetch_permits(bbox: tuple[float, float, float, float] = DEFAULT_BBOX) -> lis
     this dataset is confirmed stable and doesn't need one)."""
     min_lat, min_lon, max_lat, max_lon = bbox
     where = f"within_box(point, {max_lat}, {min_lon}, {min_lat}, {max_lon})"
-    params = {"$where": where, "$limit": 200}
+    params = {"$where": where, "$limit": 400}
 
     try:
         resp = requests.get(PERMIT_DATASET_URL, params=params, timeout=REQUEST_TIMEOUT)
